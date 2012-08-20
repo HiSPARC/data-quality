@@ -25,9 +25,9 @@ OUTPUTFILE = 'Logfile.h5'
 
 stationlist = [501, 502, 503, 504, 505, 506, 509]
 
-# For the analysis of the stations in the current station list three differen reference dates were used as seen below. 
-# The list can further be filled and if necessary new refdates have to be included.      
-for i in stationlist:    
+# For the analysis of the stations in the current station list three differen reference dates were used as seen below.
+# The list can further be filled and if necessary new refdates have to be included.
+for i in stationlist:
     STATION = i
     if i == 503:
         REFDATE = datetime(2012,2,2)   #Date used to get reference values
@@ -35,7 +35,7 @@ for i in stationlist:
         REFDATE = datetime(2012,4,28)   #Date used to get reference values
     else:
         REFDATE = datetime(2012,1,1)   #Date used to get reference values
-    START = REFDATE #Date to start the analysis; this is now the reference date itself, but this could be changed. 
+    START = REFDATE #Date to start the analysis; this is now the reference date itself, but this could be changed.
     STOP = datetime(2012,7,15) #Date to stop, will not be analyzed
     TIMESTEP = timedelta(hours=4) # This timestep determines the lenght of each block to be analyzed.
     NR_BLOCKS = 24 / (TIMESTEP.seconds / 3600) # Used later on because as reference the average of a whole day is used.
@@ -46,7 +46,7 @@ for i in stationlist:
     PH_MPV_LOW = 120 # 76 mV
     PH_MPV_HIGH = 439 # 250 mV
     PI_MPV_LOW = 1200 # 760 mVns
-    PI_MPV_HIGH = 4390 # 2500mVns 
+    PI_MPV_HIGH = 4390 # 2500mVns
 
     # define class
 
@@ -62,8 +62,8 @@ for i in stationlist:
         pi_mpv = Float32Col(shape=4)
 
     # define routines
-    
-    def first_download(): # Not used in the current script; could be integrated later on 
+
+    def first_download(): # Not used in the current script; could be integrated later on
         """downloads data from HDF5
 
             including data for referencedate (if necessary)
@@ -134,7 +134,7 @@ for i in stationlist:
         t1 = make_timestamp(date + TIMESTEP)
 
         peaks = events.readWhere('(t0 <= timestamp) & (timestamp < t1)')['n_peaks']
-        
+
         compa = (100*(count_peaks(peaks, 0)) / ref_pks[0])
         compb = (100*(count_peaks(peaks, 1)) / ref_pks[1])
         compc = (100*(count_peaks(peaks, 2)) / ref_pks[2])
@@ -147,9 +147,9 @@ for i in stationlist:
     def get_ph(date):
         """Get the pulseheights for the specified time interval TIMESTEP
 
-         returns  
+         returns
         """
-        
+
         t0 = make_timestamp(date)
         t1 = make_timestamp(date + TIMESTEP)
 
@@ -387,7 +387,7 @@ for i in stationlist:
 
 
     def getph(date, ref = 0):
-        """ Takes the pulseheight data from the datafile and averages for one hour. 
+        """ Takes the pulseheight data from the datafile and averages for one hour.
 
         """
         try:
@@ -398,7 +398,7 @@ for i in stationlist:
             else:
                 t1 = date + timedelta(hours=24)
                 hours = 24
-            # The reference data is always based on 24 hours; so the reference data is not influenced by a possible day / night difference    
+            # The reference data is always based on 24 hours; so the reference data is not influenced by a possible day / night difference
             t1 = timegm(t1.utctimetuple())
             ph = events.readWhere('(timestamp >= t0) & (timestamp < t1)')['pulseheights']
 
@@ -416,7 +416,7 @@ for i in stationlist:
 
             if ph[0,2] == -1:
                 ph3 = []
-            else:    
+            else:
                 ph3 = plt.hist(ph[:,2], bins = 45, range = [88,877], histtype = 'step', log = 'True', color = 'g')
                 ph3 = ph3[0] / float(hours)
 
@@ -425,21 +425,21 @@ for i in stationlist:
             else:
                 ph4 = plt.hist(ph[:,3], bins = 45, range = [88,877], histtype = 'step', log = 'True', color = 'c')
                 ph4 = ph4[0] / float(hours)
-            
+
             pulseheights = [ph1, ph2, ph3, ph4]
         except:
             print 'This date contains no data; \n', (date)
             pulseheights = [-1, -1, -1, -1]
-        
+
         return pulseheights
-            
+
     def phdiff(date):
         """Checks if the Pulse Height histogram differs in shape from the one on REFDATE
 
         """
 
         ph_check = getph(date)
-            
+
         errors = []
 
         try:
@@ -467,7 +467,7 @@ for i in stationlist:
                         diff2_av = 0
                     else:
                         diff2_av = -1
-                
+
                 if min(ph_check[2]) >= 0:
                     ph3 = ph_check[2]
                     diff= []
@@ -479,7 +479,7 @@ for i in stationlist:
                         diff3_av = 0
                     else:
                         diff3_av = -1
-                        
+
                 if min(ph_check[3]) >= 0:
                     ph4 = ph_check[3]
                     diff= []
@@ -504,13 +504,13 @@ for i in stationlist:
             diff3_av = -1
             diff4_av = -1
 
-        
+
         diff_av = [diff1_av, diff2_av, diff3_av, diff4_av]
 
         return diff_av
-        
+
     def getpi(date, ref = 0):
-         """ Takes the pulse integral data from the datafile and averages for one hour. 
+         """ Takes the pulse integral data from the datafile and averages for one hour.
 
         """
         try:
@@ -521,7 +521,7 @@ for i in stationlist:
             else:
                 t1 = date + timedelta(hours=24)
                 hours = 24
-            # The reference data is always based on 24 hours; so the reference data is not influenced by a possible day / night difference    
+            # The reference data is always based on 24 hours; so the reference data is not influenced by a possible day / night difference
             t1 = timegm(t1.utctimetuple())
             pi = events.readWhere('(timestamp >= t0) & (timestamp < t1)')['integrals']
 
@@ -539,7 +539,7 @@ for i in stationlist:
 
             if pi[0,2] == -1:
                 pi3 = []
-            else:    
+            else:
                 pi3 = plt.hist(pi[:,2], bins = 45, range = [877,8770], histtype = 'step', log = 'True', color = 'g')
                 pi3 = pi3[0] / float(hours)
 
@@ -548,21 +548,21 @@ for i in stationlist:
             else:
                 pi4 = plt.hist(pi[:,3], bins = 45, range = [877,8770], histtype = 'step', log = 'True', color = 'c')
                 pi4 = pi4[0] / float(hours)
-                
+
             pulseintegrals = [pi1, pi2, pi3, pi4]
         except:
             print 'This date contains no data; \n', (date)
             pulseintegrals = [-1, -1, -1, -1]
-        
+
         return pulseintegrals
-            
+
     def pidiff(date):
         """Checks if the Pulse Integral histogram differs in shape from the one on REFDATE
 
         """
 
         pi_check = getpi(date)
-            
+
         errors = []
 
         try:
@@ -590,7 +590,7 @@ for i in stationlist:
                         diff2_av = 0
                     else:
                         diff2_av = -1
-                
+
                 if min(pi_check[2]) >= 0:
                     pi3 = pi_check[2]
                     diff= []
@@ -602,7 +602,7 @@ for i in stationlist:
                         diff3_av = 0
                     else:
                         diff3_av = -1
-                        
+
                 if min(pi_check[3]) >= 0:
                     pi4 = pi_check[3]
                     diff= []
@@ -627,7 +627,7 @@ for i in stationlist:
             diff3_av = -1
             diff4_av = -1
 
-        
+
         diff_av = [diff1_av, diff2_av, diff3_av, diff4_av]
 
         return diff_av
@@ -636,7 +636,7 @@ for i in stationlist:
     if __name__ == '__main__':
         data = openFile(DATAFILE, 'r')
         events = data.getNode('/s%s' %STATION, 'events')
-        
+
         output = openFile(OUTPUTFILE, 'a')
 
         try:
@@ -657,11 +657,11 @@ for i in stationlist:
         pi2_ref = pi_ref[1]
         pi3_ref = pi_ref[2]
         pi4_ref = pi_ref[3]
-        
+
         date1 = START
-        
+
         while date1 < STOP:
-            print(date1) 
+            print(date1)
             ph, ph_fit  = get_ph(date1)
             pi, pi_fit  = get_pi(date1)
             logs['start'] = mktime(date1.timetuple())
@@ -685,9 +685,9 @@ for i in stationlist:
                 logs['useful'] = True
             logs.append()
             date1 = date1 + TIMESTEP
-            plt.close('all') 
+            plt.close('all')
             # This closes the figures made bij the 'hist' functions. Otherwise the memory is slowly filled  until python crashes on a memory error
             print(STATION)
-        
+
         data.close()
         output.close()

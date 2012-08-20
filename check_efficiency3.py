@@ -31,34 +31,34 @@ def efficiency(station):
         pi_diff = table.col('pi_diff')
         ph_mpv = table.col('ph_mpv')
         pi_mpv = table.col('pi_mpv')
-        
+
         up = 0
         count_ev = 0
         count_phdiff = 0
         count_pidiff = 0
         count_phmpv = 0
         count_pimpv = 0
-        
+
         for i in range(len(nr_ev)):
-        
+
             if sum(nr_ev[i]) != 0:
                 up = up + 1
-                       
+
                 if (min(nr_ev[i]) >= 75) and (max(nr_ev[i]) <= 125):
                     count_ev += 1
-                
+
                 if max(ph_diff[i]) < 50:
                     count_phdiff += 1
-                
+
                 if max(pi_diff[i]) < 50:
                     count_pidiff += 1
-                
+
                 if (min(ph_mpv[i]) > 120) and (max(ph_mpv[i]) < 439):
                         count_phmpv += 1
-                
+
                 if (min(pi_mpv[i]) > 1200) and (max(pi_mpv[i]) < 4390):
                         count_pimpv += 1
-                                     
+
         uptime = 100*up / len(nr_ev)
         efficiency = 100*useful.sum()/up
         nr_ev_check = 100*count_ev / up
@@ -84,7 +84,7 @@ if __name__ == '__main__':
             st = STATION[i]
             uptime, eff, nr_ev_check, ph_diff_check, pi_diff_check, ph_mpv_check, pi_mpv_check = efficiency(st)
             efflist.append([st,uptime, eff, nr_ev_check, ph_diff_check, pi_diff_check, ph_mpv_check, pi_mpv_check])
-            
+
             print 'the efficiency of station ', st, ' is ', eff, ('%')
     with open(OUTPUTFILE, 'w') as outputfile:
             file = csv.writer(outputfile, delimiter = '\t')
