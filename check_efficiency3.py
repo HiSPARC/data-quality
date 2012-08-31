@@ -5,16 +5,13 @@ in globals, set the station number and the period to be analyzed
 returns efficiency as an integer percentage of time.
 """
 
-# import modules
 from tables import openFile, NoSuchNodeError
 import csv
 
-# define globals
 DATAFILE = 'Logfile.h5'
 OUTPUTFILE = 'Efficiency_Sciencepark_2012_2.dat'
 STATION = [501, 502, 503, 504, 505, 506, 509]
 
-# define routines
 
 def efficiency(station):
     """determines the ratio of the number of useful periods to the total number of periods
@@ -73,7 +70,6 @@ def efficiency(station):
 
     return uptime, efficiency, nr_ev_check, ph_diff_check, pi_diff_check, ph_mpv_check, pi_mpv_check
 
-# main program
 
 if __name__ == '__main__':
 
