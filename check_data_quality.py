@@ -252,10 +252,10 @@ def find_MPVINT(pi, pi_fit):
             x = bins[:-1] + .5 * (bins[1] - bins[0])
 
             # A first approximation of the position of the MPV and the minimum to the left is made. Used for fit bounds and initial guess of the parameters.
-            guess_max_x = ndimage.extrema(y.compress((1500<= x) & (x < 4100)))[3][0] + len(y.compress(x < 1500))
+            guess_max_x = ndimage.extrema(y.compress((1500 <= x) & (x < 4100)))[3][0] + len(y.compress(x < 1500))
             guess_max_x = x[guess_max_x]
             guess_min_x = ndimage.extrema(y.compress((530 <= x) & (x < guess_max_x)))[2][0] + len(y.compress(x < 530))
-            guess_min_x = max([1200,x[guess_min_x]])
+            guess_min_x = max([1200, x[guess_min_x]])
             guess_max_y = ndimage.extrema(y.compress((1500 <= x) & (x < 4100)))[1]
             guess_min_y = ndimage.extrema(y.compress((530 <= x) & (x < guess_max_x)))[0]
 
@@ -263,7 +263,7 @@ def find_MPVINT(pi, pi_fit):
             g1 = guess_max_x
 
             # The fit range. Since the right side of the ph histogram is most similar to a Gauss function, we do not want to set bound 2 too small.
-            bound1 = guess_min_x + (guess_max_x-guess_min_x)/4
+            bound1 = guess_min_x + (guess_max_x-guess_min_x) / 4
 
             if (guess_max_x-guess_min_x) <= 500:
                 bound2 = guess_max_x + (guess_max_x-guess_min_x)*1.5
@@ -323,29 +323,19 @@ def getph(date, ref = 0):
         # The reference data is always based on 24 hours; so the reference data is not influenced by a possible day / night difference
         t1 = timegm(t1.utctimetuple())
         ph = events.readWhere('(timestamp >= t0) & (timestamp < t1)')['pulseheights']
+        ph1, ph2, ph3, ph4 = [], [], [], []
 
-        if ph[0,0] == -1:
-            ph1 = []
-        else:
-            ph1 = plt.hist(ph[:,0], bins = 45, range = [88,877], histtype = 'step', log = 'True', color = 'k')
+        if ph[0, 0] != -1:
+            ph1 = plt.hist(ph[:,0], bins=45, range=[88,877], histtype='step', log='True', color='k')
             ph1 = ph1[0] / float(hours)
-
-        if ph[0,1] == -1:
-            ph2 = []
-        else:
-            ph2 = plt.hist(ph[:,1], bins = 45, range = [88,877], histtype = 'step', log = 'True', color = 'r')
+        if ph[0, 1] != -1:
+            ph2 = plt.hist(ph[:,1], bins=45, range=[88,877], histtype='step', log='True', color='r')
             ph2 = ph2[0] / float(hours)
-
-        if ph[0,2] == -1:
-            ph3 = []
-        else:
-            ph3 = plt.hist(ph[:,2], bins = 45, range = [88,877], histtype = 'step', log = 'True', color = 'g')
+        if ph[0, 2] != -1:
+            ph3 = plt.hist(ph[:,2], bins=45, range=[88,877], histtype='step', log='True', color='g')
             ph3 = ph3[0] / float(hours)
-
-        if ph[0,3] == -1:
-            ph4 = []
-        else:
-            ph4 = plt.hist(ph[:,3], bins = 45, range = [88,877], histtype = 'step', log = 'True', color = 'c')
+        if ph[0, 3] != -1:
+            ph4 = plt.hist(ph[:,3], bins=45, range=[88,877], histtype='step', log='True', color='c')
             ph4 = ph4[0] / float(hours)
 
         pulseheights = [ph1, ph2, ph3, ph4]
@@ -356,7 +346,7 @@ def getph(date, ref = 0):
     return pulseheights
 
 
-def phdiff(date):
+def phdiff(date, ph_ref):
     """Checks if the Pulse Height histogram differs in shape from the one on REFDATE
 
     """
@@ -367,66 +357,20 @@ def phdiff(date):
 
     try:
         if len(ph_check) > 0:
-            if min(ph_check[0]) >= 0:
-                ph1 = ph_check[0]
-                diff= []
-                for i in range(45):
-                    diff.append(100*(abs(ph1[i] - ph1_ref[i])/ ph1_ref[i]))
-                diff1_av = average(diff)
-            else:
-                if ph1_ref == []:
-                    diff1_av = 0
-                else:
-                    diff1_av = -1
-
-            if min(ph_check[1]) >= 0:
-                ph2 = ph_check[1]
-                diff= []
-                for i in range(45):
-                    diff.append(100*(abs(ph2[i] - ph2_ref[i])/ ph2_ref[i]))
-                diff2_av = average(diff)
-            else:
-                if ph2_ref == []:
-                    diff2_av = 0
-                else:
-                    diff2_av = -1
-
-            if min(ph_check[2]) >= 0:
-                ph3 = ph_check[2]
-                diff= []
-                for i in range(45):
-                    diff.append(100*(abs(ph3[i] - ph3_ref[i])/ ph3_ref[i]))
-                diff3_av = average(diff)
-            else:
-                if ph3_ref == []:
-                    diff3_av = 0
-                else:
-                    diff3_av = -1
-
-            if min(ph_check[3]) >= 0:
-                ph4 = ph_check[3]
-                diff= []
-                for i in range(45):
-                    diff.append(100*(abs(ph4[i] - ph4_ref[i])/ ph4_ref[i]))
-                diff4_av = average(diff)
-            else:
-                if ph4_ref == []:
-                    diff4_av = 0
-                else:
-                    diff4_av = -1
-
+            diff1_av = pulse_check(ph_check[0], ph_ref[0])
+            diff2_av = pulse_check(ph_check[1], ph_ref[1])
+            diff3_av = pulse_check(ph_check[2], ph_ref[2])
+            diff4_av = pulse_check(ph_check[3], ph_ref[3])
         else:
             diff1_av = -1
             diff2_av = -1
             diff3_av = -1
             diff4_av = -1
-
     except:
         diff1_av = -1
         diff2_av = -1
         diff3_av = -1
         diff4_av = -1
-
 
     diff_av = [diff1_av, diff2_av, diff3_av, diff4_av]
 
@@ -449,28 +393,22 @@ def getpi(date, ref = 0):
         t1 = timegm(t1.utctimetuple())
         pi = events.readWhere('(timestamp >= t0) & (timestamp < t1)')['integrals']
 
-        if pi[0,0] == -1:
-            pi1 = []
-        else:
-            pi1 = plt.hist(pi[:,0], bins = 45, range = [877,8770], histtype = 'step', log = 'True', color = 'k')
+        pi1, pi2, pi3, pi4 = [], [], [], []
+
+        if pi[0, 0] != -1:
+            pi1 = plt.hist(pi[:,0], bins=45, range=[877, 8770], histtype='step', log='True', color='k')
             pi1 = pi1[0] / float(hours)
 
-        if pi[0,1] == -1:
-            pi2 = []
-        else:
-            pi2 = plt.hist(pi[:,1], bins = 45, range = [877,8770], histtype = 'step', log = 'True', color = 'r')
+        if pi[0, 1] != -1:
+            pi2 = plt.hist(pi[:, 1], bins=45, range=[877, 8770], histtype='step', log='True', color='r')
             pi2 = pi2[0] / float(hours)
 
-        if pi[0,2] == -1:
-            pi3 = []
-        else:
-            pi3 = plt.hist(pi[:,2], bins = 45, range = [877,8770], histtype = 'step', log = 'True', color = 'g')
+        if pi[0, 2] != -1:
+            pi3 = plt.hist(pi[:, 2], bins=45, range=[877, 8770], histtype='step', log='True', color='g')
             pi3 = pi3[0] / float(hours)
 
-        if pi[0,3] == -1:
-            pi4 = []
-        else:
-            pi4 = plt.hist(pi[:,3], bins = 45, range = [877,8770], histtype = 'step', log = 'True', color = 'c')
+        if pi[0, 3] != -1:
+            pi4 = plt.hist(pi[:, 3], bins=45, range=[877, 8770], histtype='step', log='True', color='c')
             pi4 = pi4[0] / float(hours)
 
         pulseintegrals = [pi1, pi2, pi3, pi4]
@@ -481,7 +419,7 @@ def getpi(date, ref = 0):
     return pulseintegrals
 
 
-def pidiff(date):
+def pidiff(date, pi_ref):
     """Checks if the Pulse Integral histogram differs in shape from the one on REFDATE
 
     """
@@ -492,60 +430,15 @@ def pidiff(date):
 
     try:
         if len(pi_check) > 0:
-            if min(pi_check[0]) >= 0:
-                pi1 = pi_check[0]
-                diff= []
-                for i in range(45):
-                    diff.append(100*(abs(pi1[i] - pi1_ref[i])/ pi1_ref[i]))
-                diff1_av = average(diff)
-            else:
-                if pi_ref == []:
-                    diff1_av = 0
-                else:
-                    diff1_av = -1
-
-            if min(pi_check[1]) >= 0:
-                pi2 = pi_check[1]
-                diff= []
-                for i in range(45):
-                    diff.append(100*(abs(pi2[i] - pi2_ref[i])/ pi2_ref[i]))
-                diff2_av = average(diff)
-            else:
-                if pi2_ref == []:
-                    diff2_av = 0
-                else:
-                    diff2_av = -1
-
-            if min(pi_check[2]) >= 0:
-                pi3 = pi_check[2]
-                diff= []
-                for i in range(45):
-                    diff.append(100*(abs(pi3[i] - pi3_ref[i])/ pi3_ref[i]))
-                diff3_av = average(diff)
-            else:
-                if pi3_ref == []:
-                    diff3_av = 0
-                else:
-                    diff3_av = -1
-
-            if min(pi_check[3]) >= 0:
-                pi4 = pi_check[3]
-                diff= []
-                for i in range(45):
-                    diff.append(100*(abs(pi4[i] - pi4_ref[i])/ pi4_ref[i]))
-                diff4_av = average(diff)
-            else:
-                if pi4_ref == []:
-                    diff4_av = 0
-                else:
-                    diff4_av = -1
-
+            diff1_av = pulse_check(pi_check[0], pi_ref[0])
+            diff2_av = pulse_check(pi_check[1], pi_ref[1])
+            diff3_av = pulse_check(pi_check[2], pi_ref[2])
+            diff4_av = pulse_check(pi_check[3], pi_ref[3])
         else:
             diff1_av = -1
             diff2_av = -1
             diff3_av = -1
             diff4_av = -1
-
     except:
         diff1_av = -1
         diff2_av = -1
@@ -553,6 +446,23 @@ def pidiff(date):
         diff4_av = -1
 
     diff_av = [diff1_av, diff2_av, diff3_av, diff4_av]
+
+    return diff_av
+
+
+def pulse_check(check, ref):
+
+    if min(check) >= 0:
+        pi = check
+        diff= []
+        for i in range(45):
+            diff.append(100 * (abs(pi[i] - ref[i]) / ref[i]))
+        diff_av = average(diff)
+    else:
+        if ref == []:
+            diff_av = 0
+        else:
+            diff_av = -1
 
     return diff_av
 
@@ -565,11 +475,11 @@ if __name__ == '__main__':
     for i in stationlist:
         STATION = i
         if i == 503:
-            REFDATE = datetime(2012,2,2)   #Date used to get reference values
+            REFDATE = datetime(2012, 2, 2)   #Date used to get reference values
         elif i == 505:
-            REFDATE = datetime(2012,4,28)   #Date used to get reference values
+            REFDATE = datetime(2012, 4, 28)   #Date used to get reference values
         else:
-            REFDATE = datetime(2012,1,1)   #Date used to get reference values
+            REFDATE = datetime(2012, 1, 1)   #Date used to get reference values
         START = REFDATE #Date to start the analysis; this is now the reference date itself, but this could be changed.
         STOP = datetime(2012,7,15) #Date to stop, will not be analyzed
 
@@ -586,16 +496,8 @@ if __name__ == '__main__':
         logs = table.row
 
         refpks = ref_peaks()
-        ph_ref = getph(REFDATE, ref = 1)
-        ph1_ref = ph_ref[0]
-        ph2_ref = ph_ref[1]
-        ph3_ref = ph_ref[2]
-        ph4_ref = ph_ref[3]
-        pi_ref = getpi(REFDATE, ref = 1)
-        pi1_ref = pi_ref[0]
-        pi2_ref = pi_ref[1]
-        pi3_ref = pi_ref[2]
-        pi4_ref = pi_ref[3]
+        ph_ref = getph(REFDATE, ref=1)
+        pi_ref = getpi(REFDATE, ref=1)
 
         date1 = START
 
@@ -605,8 +507,8 @@ if __name__ == '__main__':
             pi, pi_fit  = get_pi(date1)
             logs['start'] = mktime(date1.timetuple())
             logs['nr_ev'] = compare_peaks(date1, refpks)
-            logs['ph_diff'] = phdiff(date1)
-            logs['pi_diff'] = pidiff(date1)
+            logs['ph_diff'] = phdiff(date1, ph_ref)
+            logs['pi_diff'] = pidiff(date1, pi_ref)
             logs['ph_mpv'] = find_MPV(ph, ph_fit)
             logs['pi_mpv'] = find_MPVINT(pi, pi_fit)
             logs['ref_date'] = mktime(REFDATE.timetuple())
