@@ -25,7 +25,8 @@ MARG_PLS_INT = 50 # margin accepted in shape analysis of pulse integral histogra
 PH_MPV_LOW = 120 # 76 mV
 PH_MPV_HIGH = 439 # 250 mV
 PI_MPV_LOW = 1200 # 760 mVns
-PI_MPV_HIGH = 4390 # 2500mVns
+PI_MPV_HIGH = 4390 # 2500 mVns
+
 
 class Logs(IsDescription):
     ##Class used to create table LOGS in OUTPUTFILE.
@@ -39,26 +40,26 @@ class Logs(IsDescription):
     pi_mpv = Float32Col(shape=4)
 
 
-def first_download(): # Not used in the current script; could be integrated later on
-    """downloads data from HDF5
+def first_download(station): # Not used in the current script; could be integrated later on
+    """ Downloads data from HDF5
 
-        including data for referencedate (if necessary)
+    Including data for referencedate (if necessary)
     """
-    group = '/s%s' % STATION
+    group = '/s%s' % station
 
-    with openFile(DATAFILE, 'a') as datafile:
+    with openFile(filepath, 'a') as datafile:
         if group not in datafile:
-            download_data(datafile, group, STATION, START, STOP)
+            download_data(datafile, group, station, START, STOP)
 
             nextday = REFDATE + timedelta(days=1)
             if REFDATE < START or nextday > STOP:
-                download_data(datafile, '/s%s' % STATION, STATION, REFDATE, nextday)
+                download_data(datafile, '/s%s' % station, station, REFDATE, nextday)
 
 
 def make_timestamp(date):
-    """turns date between brackets into timestamp,
+    """ Turns date between brackets into timestamp
 
-        needed for reading data
+    Needed for reading data
     """
     timetuple = date.utctimetuple()
     timestamp = timegm(timetuple)
@@ -66,7 +67,7 @@ def make_timestamp(date):
 
 
 def count_peaks(peaks, index):
-    """Counts the number of peaks in the group 'events' of DATAFILE
+    """ Counts the number of peaks in the group 'events' of DATAFILE
 
     Returns this number as an integer
     """
@@ -77,10 +78,10 @@ def count_peaks(peaks, index):
 
 
 def ref_peaks():
-    """Returns number of peaks for the selected referencedate
+    """ Returns number of peaks for the selected referencedate
 
-        Average for all day of reference for each scintillator.
-        Returns refs = tuple of 4 integers
+    Average for all day of reference for each scintillator.
+    Returns refs = tuple of 4 integers
     """
     date = REFDATE
     one_day = timedelta(days=1)
@@ -143,77 +144,6 @@ def get_ph(date):
     return ph, ph_fit
 
 
-def find_MPV(ph, ph_fit):
-    """Determine the ADC value of the MPV for each detector
-
-    return of tuple of MPV values
-    """
-
-    MPV1, MPV2, MPV3, MPV4 = [], [], [], []
-
-    for i in range(4): ##4 DETECTOREN
-        try:
-            ph0 = ph_fit[i] #First fetches the pulseheight of the first detector and then that of the second.
-
-            y, bins, patches = plt.hist(ph0, bins=linspace(0, 2000 / 0.57, STEPSIZE), label="Data")
-
-            x = bins[:-1] + .5 * (bins[1] - bins[0])
-
-            # A first approximation of the position of the MPV and the minimum to the left is made. Used for fit bounds and initial guess of the parameters.
-            guess_max_x = ndimage.extrema(y.compress((150<= x) & (x < 410)))[3][0] + len(y.compress(x < 150))
-            guess_max_x = x[guess_max_x]
-            guess_min_x = ndimage.extrema(y.compress((53 <= x) & (x < guess_max_x)))[2][0] + len(y.compress(x < 53))
-            guess_min_x = max([120, x[guess_min_x]])
-            guess_max_y = ndimage.extrema(y.compress((150 <= x) & (x < 410)))[1]
-            guess_min_y = ndimage.extrema(y.compress((53 <= x) & (x < guess_max_x)))[0]
-
-            g0 = guess_max_y
-            g1 = guess_max_x
-
-            # The fit range. Since the right side of the ph histogram is most similar to a Gauss function, we do not want to set bound 2 too small.
-            bound1 = guess_min_x + (guess_max_x-guess_min_x)/4
-
-            if (guess_max_x-guess_min_x) <= 50:
-                bound2 = guess_max_x + (guess_max_x-guess_min_x) * 1.5
-            else:
-                bound2 = guess_max_x + (guess_max_x-guess_min_x)
-
-            # Fit a Gaussian to the peak.
-            f = lambda x, a, b, c: a * exp(-((x - b) ** 2) / c)
-            x2 = x.compress((bound1 <= x) & (x < bound2))
-            y2 = y.compress((bound1 <= x) & (x < bound2))
-            popt, pcov = optimize.curve_fit(f, x2, y2, (g0,g1,(guess_max_x-guess_min_x) / 2), sigma=sqrt(y2))
-
-            # Find the x value of the Peak:
-            peak = popt[1]
-            print 'The MPV of detector %d lies at %d ADC' % (i + 1, peak)
-
-        # Safety nets: prevent the code from terminating if an error occurs
-        except IndexError:
-            peak = nan
-            print 'Apparently there is no data'
-        except RuntimeError:
-            peak = nan
-            print 'Unable to make a good fit'
-        except TypeError:
-            peak = nan
-            print 'Not enough data to make a proper fit' # When it uses less than three bins to make the fit you get this error
-        except ValueError:
-            peak = nan
-            print 'Value Error Occured'
-        if i == 0:
-            MIP1 = peak
-        elif i == 1:
-            MIP2 = peak
-        elif i == 2:
-            MIP3 = peak
-        elif i == 3:
-            MIP4 = peak
-
-    mpv = (MIP1, MIP2, MIP3, MIP4)
-    return mpv
-
-
 def get_pi(date):
     """Get the pulseheightintegral for the specified time interval TIMESTEP
 
@@ -235,51 +165,52 @@ def get_pi(date):
     return pi, pi_fit
 
 
-def find_MPVINT(pi, pi_fit):
+def find_MPV(fit, conv=1):
     """Determine the ADC value of the MPV for each detector
 
-    return of tuple of MPV values
-    """
+    For pulseheights use conv = 1
+    For pulseintegral values use conv = 10
 
+    Returns a tuple of MPV values
+
+    """
     MPV1, MPV2, MPV3, MPV4 = [], [], [], []
 
     for i in range(4): ##4 DETECTOREN
         try:
-            pi0 = pi_fit[i] #First fetches the pulseheight of the first detector and then that of the second.
-
-            y, bins, patches = plt.hist(pi0, bins=linspace(0, 20000 / 0.57, STEPSIZE),  label="Data")
+            y, bins, patches = plt.hist(fit[i], bins=linspace(0, conv * 2000 / 0.57, STEPSIZE), label="Data")
 
             x = bins[:-1] + .5 * (bins[1] - bins[0])
 
             # A first approximation of the position of the MPV and the minimum to the left is made. Used for fit bounds and initial guess of the parameters.
-            guess_max_x = ndimage.extrema(y.compress((1500 <= x) & (x < 4100)))[3][0] + len(y.compress(x < 1500))
+            guess_max_x = ndimage.extrema(y.compress((conv * 150 <= x) & (x < conv * 410)))[3][0] + len(y.compress(x < conv * 150))
             guess_max_x = x[guess_max_x]
-            guess_min_x = ndimage.extrema(y.compress((530 <= x) & (x < guess_max_x)))[2][0] + len(y.compress(x < 530))
-            guess_min_x = max([1200, x[guess_min_x]])
-            guess_max_y = ndimage.extrema(y.compress((1500 <= x) & (x < 4100)))[1]
-            guess_min_y = ndimage.extrema(y.compress((530 <= x) & (x < guess_max_x)))[0]
+            guess_min_x = ndimage.extrema(y.compress((conv * 53 <= x) & (x < guess_max_x)))[2][0] + len(y.compress(x < conv * 53))
+            guess_min_x = max([conv * 120, x[guess_min_x]])
+            guess_max_y = ndimage.extrema(y.compress((conv * 150 <= x) & (x < conv * 410)))[1]
+            guess_min_y = ndimage.extrema(y.compress((conv * 53 <= x) & (x < guess_max_x)))[0]
 
             g0 = guess_max_y
             g1 = guess_max_x
 
             # The fit range. Since the right side of the ph histogram is most similar to a Gauss function, we do not want to set bound 2 too small.
-            bound1 = guess_min_x + (guess_max_x-guess_min_x) / 4
+            bound1 = guess_min_x + (guess_max_x - guess_min_x) / 4
 
-            if (guess_max_x-guess_min_x) <= 500:
-                bound2 = guess_max_x + (guess_max_x-guess_min_x)*1.5
+            if (guess_max_x - guess_min_x) <= conv * 50:
+                bound2 = guess_max_x + (guess_max_x - guess_min_x) * 1.5
             else:
-                bound2 = guess_max_x + (guess_max_x-guess_min_x)
+                bound2 = guess_max_x + (guess_max_x - guess_min_x)
 
             # Fit a Gaussian to the peak.
-            f = lambda x,a,b,c: a*exp(-((x-b)**2)/c)
-            x2 = x.compress((bound1 <= x) & (x < bound2))
+            f = lambda x, a, b, c: a * exp(-((x - b) ** 2) / c)
             x2 = x.compress((bound1 <= x) & (x < bound2))
             y2 = y.compress((bound1 <= x) & (x < bound2))
-            popt, pcov = optimize.curve_fit(f, x2, y2, (g0,g1,(guess_max_x-guess_min_x)/2), sigma=sqrt(y2))
+            popt, pcov = optimize.curve_fit(f, x2, y2, (g0, g1, (guess_max_x - guess_min_x) / 2), sigma=sqrt(y2))
 
-            # Find the x value of the Peak:
+            # Find the x value of the peak:
             peak = popt[1]
-            print 'The pulse integral MPV of detector %d lies at %d ADC' % (i + 1, peak)
+            print ('The MPV of the pulseheight of detector %d lies at %d ADC' %
+                   (i + 1, peak))
 
         # Safety nets: prevent the code from terminating if an error occurs
         except IndexError:
@@ -304,46 +235,8 @@ def find_MPVINT(pi, pi_fit):
         elif i == 3:
             MIP4 = peak
 
-    mpvint = (MIP1, MIP2, MIP3, MIP4)
-    return mpvint
-
-
-def getph(date, ref = 0):
-    """ Takes the pulseheight data from the datafile and averages for one hour.
-
-    """
-    try:
-        t0 = timegm(date.utctimetuple())
-        if ref == 0:
-            t1 = date + TIMESTEP
-            hours = TIMESTEP.seconds / 3600
-        else:
-            t1 = date + timedelta(hours=24)
-            hours = 24
-        # The reference data is always based on 24 hours; so the reference data is not influenced by a possible day / night difference
-        t1 = timegm(t1.utctimetuple())
-        ph = events.readWhere('(timestamp >= t0) & (timestamp < t1)')['pulseheights']
-        ph1, ph2, ph3, ph4 = [], [], [], []
-
-        if ph[0, 0] != -1:
-            ph1 = plt.hist(ph[:,0], bins=45, range=[88,877], histtype='step', log='True', color='k')
-            ph1 = ph1[0] / float(hours)
-        if ph[0, 1] != -1:
-            ph2 = plt.hist(ph[:,1], bins=45, range=[88,877], histtype='step', log='True', color='r')
-            ph2 = ph2[0] / float(hours)
-        if ph[0, 2] != -1:
-            ph3 = plt.hist(ph[:,2], bins=45, range=[88,877], histtype='step', log='True', color='g')
-            ph3 = ph3[0] / float(hours)
-        if ph[0, 3] != -1:
-            ph4 = plt.hist(ph[:,3], bins=45, range=[88,877], histtype='step', log='True', color='c')
-            ph4 = ph4[0] / float(hours)
-
-        pulseheights = [ph1, ph2, ph3, ph4]
-    except:
-        print 'This date contains no data; \n', (date)
-        pulseheights = [-1, -1, -1, -1]
-
-    return pulseheights
+    mpv = (MIP1, MIP2, MIP3, MIP4)
+    return mpv
 
 
 def phdiff(date, ph_ref):
@@ -351,7 +244,7 @@ def phdiff(date, ph_ref):
 
     """
 
-    ph_check = getph(date)
+    ph_check = get_pulse(date, field='pulseheights')
 
     errors = []
 
@@ -377,54 +270,12 @@ def phdiff(date, ph_ref):
     return diff_av
 
 
-def getpi(date, ref = 0):
-    """ Takes the pulse integral data from the datafile and averages for one hour.
-
-    """
-    try:
-        t0 = timegm(date.utctimetuple())
-        if ref == 0:
-            t1 = date + TIMESTEP
-            hours = TIMESTEP.seconds / 3600
-        else:
-            t1 = date + timedelta(hours=24)
-            hours = 24
-        # The reference data is always based on 24 hours; so the reference data is not influenced by a possible day / night difference
-        t1 = timegm(t1.utctimetuple())
-        pi = events.readWhere('(timestamp >= t0) & (timestamp < t1)')['integrals']
-
-        pi1, pi2, pi3, pi4 = [], [], [], []
-
-        if pi[0, 0] != -1:
-            pi1 = plt.hist(pi[:,0], bins=45, range=[877, 8770], histtype='step', log='True', color='k')
-            pi1 = pi1[0] / float(hours)
-
-        if pi[0, 1] != -1:
-            pi2 = plt.hist(pi[:, 1], bins=45, range=[877, 8770], histtype='step', log='True', color='r')
-            pi2 = pi2[0] / float(hours)
-
-        if pi[0, 2] != -1:
-            pi3 = plt.hist(pi[:, 2], bins=45, range=[877, 8770], histtype='step', log='True', color='g')
-            pi3 = pi3[0] / float(hours)
-
-        if pi[0, 3] != -1:
-            pi4 = plt.hist(pi[:, 3], bins=45, range=[877, 8770], histtype='step', log='True', color='c')
-            pi4 = pi4[0] / float(hours)
-
-        pulseintegrals = [pi1, pi2, pi3, pi4]
-    except:
-        print 'This date contains no data; \n', (date)
-        pulseintegrals = [-1, -1, -1, -1]
-
-    return pulseintegrals
-
-
 def pidiff(date, pi_ref):
     """Checks if the Pulse Integral histogram differs in shape from the one on REFDATE
 
     """
 
-    pi_check = getpi(date)
+    pi_check = get_pulse(date, field='integrals')
 
     errors = []
 
@@ -448,6 +299,44 @@ def pidiff(date, pi_ref):
     diff_av = [diff1_av, diff2_av, diff3_av, diff4_av]
 
     return diff_av
+
+
+def get_pulse(date, ref=0, field='pulseheights'):
+    """ Get pulseintegral or pulseheights data and averages for one hour
+
+    """
+    try:
+        t0 = timegm(date.utctimetuple())
+        if ref == 0:
+            t1 = date + TIMESTEP
+            hours = TIMESTEP.seconds / 3600
+        else:
+            t1 = date + timedelta(hours=24)
+            hours = 24
+        # The reference data is always based on 24 hours; so the reference data is not influenced by a possible day / night difference
+        t1 = timegm(t1.utctimetuple())
+        p = events.readWhere('(timestamp >= t0) & (timestamp < t1)')[field]
+        p1, p2, p3, p4 = [], [], [], []
+
+        if p[0, 0] != -1:
+            p1 = plt.hist(p[:,0], bins=45, range=[877, 8770], histtype='step', log='True', color='k')
+            p1 = p1[0] / float(hours)
+        if p[0, 1] != -1:
+            p2 = plt.hist(p[:, 1], bins=45, range=[877, 8770], histtype='step', log='True', color='r')
+            p2 = p2[0] / float(hours)
+        if p[0, 2] != -1:
+            p3 = plt.hist(p[:, 2], bins=45, range=[877, 8770], histtype='step', log='True', color='g')
+            p3 = p3[0] / float(hours)
+        if p[0, 3] != -1:
+            p4 = plt.hist(p[:, 3], bins=45, range=[877, 8770], histtype='step', log='True', color='c')
+            p4 = p4[0] / float(hours)
+
+        pulses = [p1, p2, p3, p4]
+    except:
+        print 'This date contains no data; \n', (date)
+        pulses = [-1, -1, -1, -1]
+
+    return pulses
 
 
 def pulse_check(check, ref):
@@ -481,7 +370,7 @@ if __name__ == '__main__':
         else:
             REFDATE = datetime(2012, 1, 1)   #Date used to get reference values
         START = REFDATE #Date to start the analysis; this is now the reference date itself, but this could be changed.
-        STOP = datetime(2012,7,15) #Date to stop, will not be analyzed
+        STOP = datetime(2012, 7, 15) #Date to stop, will not be analyzed
 
         data = openFile(DATAFILE, 'r')
         events = data.getNode('/s%d' % STATION, 'events')
@@ -509,8 +398,8 @@ if __name__ == '__main__':
             logs['nr_ev'] = compare_peaks(date1, refpks)
             logs['ph_diff'] = phdiff(date1, ph_ref)
             logs['pi_diff'] = pidiff(date1, pi_ref)
-            logs['ph_mpv'] = find_MPV(ph, ph_fit)
-            logs['pi_mpv'] = find_MPVINT(pi, pi_fit)
+            logs['ph_mpv'] = find_MPV(ph_fit)
+            logs['pi_mpv'] = find_MPV(pi_fit, conv=10)
             logs['ref_date'] = mktime(REFDATE.timetuple())
             if (min(logs['nr_ev']) < (100 - MARG_PEAKS)) or (max(logs['nr_ev']) > (100 + MARG_PEAKS)):
                 logs['useful'] = False
